@@ -486,10 +486,11 @@
     const memo = document.getElementById('memo').value.trim();
     const formData = new FormData();
 
-    selectedFiles.forEach(({ file }) => {
-      formData.append('files', file, file.name);
+    selectedFiles.forEach(({ file }, index) => {
+      formData.append(`file_${index}`, file, file.name);
     });
 
+    formData.append('fileCount', selectedFiles.length);
     formData.append('memo', memo);
 
     setLoading(true);

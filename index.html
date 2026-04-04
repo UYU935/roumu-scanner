@@ -484,33 +484,30 @@
     }
 
     const memo = document.getElementById('memo').value.trim();
-    const formData = new FormData();
-
-    selectedFiles.forEach(({ file }, index) => {
-      formData.append(`file_${index}`, file, file.name);
-    });
-
-    formData.append('fileCount', selectedFiles.length);
-    formData.append('memo', memo);
+    const totalFiles = selectedFiles.length;
 
     setLoading(true);
 
     try {
-      const response = await fetch(N8N_WEBHOOK_URL, {
-        method: 'POST',
-        body: formData,
-      });
+      for (let i = 0; i < totalFiles; i++) {
+        const fd = new FormData();
+        fd.append('files', selectedFiles[i].file, selectedFiles[i].file.name);
+        fd.append('memo', i === 0 ? memo : '');
+        fd.append('fileIndex', i + 1);
+        fd.append('fileCount', totalFiles);
 
-      if (response.ok) {
-        showMessage('success', '送信が完了しました。社労士に届きました。');
-        // リセット
-        selectedFiles = [];
-        fileIdCounter = 0;
-        document.getElementById('memo').value = '';
-        renderPreviews();
-      } else {
-        showMessage('error', `送信に失敗しました（エラーコード: ${response.status}）。再度お試しください。`);
+        const res = await fetch(N8N_WEBHOOK_URL, { method: 'POST', body: fd });
+        if (!res.ok) {
+          showMessage('error', `送信に失敗しました（ファイル ${i + 1}/${totalFiles}、エラーコード: ${res.status}）。再度お試しください。`);
+          return;
+        }
       }
+
+      showMessage('success', '送信が完了しました。社労士に届きました。');
+      selectedFiles = [];
+      fileIdCounter = 0;
+      document.getElementById('memo').value = '';
+      renderPreviews();
     } catch (err) {
       showMessage('error', 'ネットワークエラーが発生しました。Wi-Fi接続を確認してください。');
     } finally {

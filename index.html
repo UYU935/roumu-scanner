@@ -322,7 +322,6 @@
     #camera-video {
       flex: 1;
       width: 100%;
-      max-height: 50vh;
       object-fit: cover;
       background: #000;
       min-height: 0;
@@ -392,6 +391,83 @@
       opacity: 1;
       transition: none;
     }
+
+    /* ライトボックス */
+    #lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.93);
+      z-index: 2000;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #lightbox.open {
+      display: flex;
+    }
+
+    #lightbox-img {
+      max-width: 96vw;
+      max-height: 82vh;
+      object-fit: contain;
+      border-radius: 6px;
+      display: block;
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 46px;
+      height: 46px;
+      background: rgba(255,255,255,0.18);
+      border: 2px solid rgba(255,255,255,0.5);
+      border-radius: 50%;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #lightbox-file-box {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: #fff;
+    }
+
+    #lightbox-file-box .lb-icon {
+      font-size: 64px;
+    }
+
+    #lightbox-file-box .lb-name {
+      font-size: 14px;
+      color: rgba(255,255,255,0.85);
+      max-width: 80vw;
+      text-align: center;
+      word-break: break-all;
+      line-height: 1.5;
+    }
+
+    .lightbox-filename {
+      color: rgba(255,255,255,0.55);
+      font-size: 11px;
+      margin-top: 14px;
+      max-width: 90vw;
+      text-align: center;
+      word-break: break-all;
+    }
+
+    .preview-item {
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -453,6 +529,17 @@
   </div>
 </div>
 <div id="camera-flash"></div>
+
+<!-- ライトボックス -->
+<div id="lightbox" onclick="handleLightboxTap(event)">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="">
+  <div id="lightbox-file-box">
+    <span class="lb-icon">📄</span>
+    <span class="lb-name"></span>
+  </div>
+  <div id="lightbox-filename" class="lightbox-filename"></div>
+</div>
 
 <script>
   // ============================================================
@@ -568,19 +655,18 @@
       if (file.type.startsWith('image/')) {
         const url = URL.createObjectURL(file);
         html += `
-          <div class="preview-item" id="item-${id}">
+          <div class="preview-item" id="item-${id}" onclick="openLightbox(${id})">
             <img src="${url}" alt="${escapeHtml(file.name)}" onload="URL.revokeObjectURL(this.src)">
-            <button class="remove-btn" onclick="removeFile(${id})" aria-label="削除">✕</button>
+            <button class="remove-btn" onclick="event.stopPropagation(); removeFile(${id})" aria-label="削除">✕</button>
           </div>`;
       } else {
-        const ext = file.name.split('.').pop().toUpperCase();
         html += `
-          <div class="preview-item" id="item-${id}">
+          <div class="preview-item" id="item-${id}" onclick="openLightbox(${id})">
             <div class="file-icon">
               <span class="fi-icon">📄</span>
               <span class="fi-name">${escapeHtml(file.name)}</span>
             </div>
-            <button class="remove-btn" onclick="removeFile(${id})" aria-label="削除">✕</button>
+            <button class="remove-btn" onclick="event.stopPropagation(); removeFile(${id})" aria-label="削除">✕</button>
           </div>`;
       }
     });
@@ -593,6 +679,48 @@
   function removeFile(id) {
     selectedFiles = selectedFiles.filter(f => f.id !== id);
     renderPreviews();
+  }
+
+  // --- ライトボックス ---
+  function openLightbox(id) {
+    const item = selectedFiles.find(f => f.id === id);
+    if (!item) return;
+
+    const lightbox = document.getElementById('lightbox');
+    const img = document.getElementById('lightbox-img');
+    const fileBox = document.getElementById('lightbox-file-box');
+    const filenameEl = document.getElementById('lightbox-filename');
+
+    if (item.file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(item.file);
+      img.src = url;
+      img.alt = item.file.name;
+      img.onload = function() { URL.revokeObjectURL(url); };
+      img.style.display = 'block';
+      fileBox.style.display = 'none';
+    } else {
+      img.style.display = 'none';
+      img.src = '';
+      fileBox.style.display = 'flex';
+      fileBox.querySelector('.lb-name').textContent = item.file.name;
+    }
+
+    filenameEl.textContent = item.file.name;
+    lightbox.classList.add('open');
+  }
+
+  function closeLightbox() {
+    const lightbox = document.getElementById('lightbox');
+    const img = document.getElementById('lightbox-img');
+    lightbox.classList.remove('open');
+    img.src = '';
+  }
+
+  // 背景タップで閉じる
+  function handleLightboxTap(e) {
+    if (e.target === document.getElementById('lightbox')) {
+      closeLightbox();
+    }
   }
 
   // --- XSS対策 ---
